@@ -33,16 +33,16 @@ grille = [
 def avalanche():
     global grille
     n = len(grille)
-    grilletmp = grille.copy()
+    grilletmp = [[v for v in row] for row in grille]
 
     for i in range(len(grille)):
         for j in range(len(grille[0])):
             if grille[i][j] >= 4:
-                grilletmp[i][j] = grille[i][j] - 4
+                grilletmp[i][j] = grilletmp[i][j] - 4
                 for p, q in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                     if 0 <= i + p < n and 0 <= j + q < n:
                         grilletmp[i + p][j + q] += 1
-                        print(grilletmp)
+                print(*grilletmp, sep="\n", end="\n\n")
     grille = grilletmp.copy()
 
 
@@ -52,6 +52,7 @@ root.title("Projet - tas de sable")
 
 canvas = tk.Canvas(root, width=W, height=H, bg="blue")
 
+
 # Placement widgets
 canvas.grid(row=0, column=0)
 
@@ -60,7 +61,8 @@ canvas.grid(row=0, column=0)
 
 
 # Boucle principale
-print(grille)
+print(*grille, sep="\n", end="\n\n")
 avalanche()
-print(grille)
+avalanche()
+print(*grille, sep="\n", end="\n\n")
 root.mainloop()
