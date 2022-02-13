@@ -130,3 +130,4 @@ dmypy.json
 .vscode/settings.json
 unknown-0.0-py39_0.tar.bz2
 config/*.tds
+test.py
