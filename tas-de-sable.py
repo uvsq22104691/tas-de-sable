@@ -10,7 +10,6 @@
 import tkinter.filedialog as tk_filedialog
 import tkinter as tk
 import copy
-import numpy as np
 import os
 from random import randint
 
@@ -64,8 +63,8 @@ def avalanche():
     grain_max = 0
     voisins = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-    for i in range(len(grille)):
-        for j in range(len(grille[0])):
+    for i in range(n):
+        for j in range(n):
             if grille[i][j] >= 4:
                 # soustraction des grains à la case traitée
                 grilletmp[i][j] = grilletmp[i][j] - 4
@@ -76,7 +75,11 @@ def avalanche():
                         grilletmp[i + p][j + q] += 1
 
     grille = copy.deepcopy(grilletmp)
-    grain_max = np.max(grille)
+    grain_max = 0
+    for i in grille:
+        if grain_max < max(i):
+            grain_max = max(i)
+
     return grain_max
 
 
