@@ -17,6 +17,7 @@ from random import randint
 
 # Constante
 
+
 # Largeur du canvas
 W = 600
 # Hauteur du canvas
