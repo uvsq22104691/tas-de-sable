@@ -191,24 +191,44 @@ bouton_cinema = tk.Button(root, text="cinéma")
 bouton_pause = tk.Button(root, text="pause")
 bouton_aléatoire = tk.Button(root, text="Config aléatoire")
 bouton_pile_centre = tk.Button(root, text="Config pile centrée")
-bouton_max_stable = tk.Button(root,text="max stable")
-bouton_config_identity = tk.Button(root, text="config indentity", )
-bouton_sauvegarder_config = tk.Button(root, text="sauvegarder config", command= sauvegarder_config)
-bouton_charger_config = tk.Button(root , text="charger config",command= charger_config)
-bouton_addition_config = tk.Button(root , text= "addition config",command= addition_config)
-bouton_soustraction_config = tk.Button(root,text="soustraction_config",command= soustration_config)
+bouton_max_stable = tk.Button(root, text="max stable")
+bouton_config_identity = tk.Button(root, text="config indentity")
+
+bouton_sauvegarder_config = tk.Button(
+    root,
+    text="sauvegarder config",
+    command=sauvegarder_config
+)
+
+bouton_charger_config = tk.Button(
+    root,
+    text="charger config",
+    command=charger_config
+)
+
+bouton_addition_config = tk.Button(
+    root,
+    text="addition config",
+    command=addition_config
+)
+
+bouton_soustraction_config = tk.Button(
+    root,
+    text="soustraction_config",
+    command=soustration_config
+)
 # Placement widgets
 canvas.grid(row=0, column=1, rowspan=11)
-bouton_cinema.grid(row = 1, column = 0)
-bouton_pause.grid(row= 2,column =0)
+bouton_cinema.grid(row=1, column=0)
+bouton_pause.grid(row=2, column=0)
 bouton_aléatoire.grid(row=3, column=0)
 bouton_pile_centre.grid(row=4, column=0)
-bouton_max_stable.grid(row=5 , column=0)
+bouton_max_stable.grid(row=5, column=0)
 bouton_config_identity.grid(row=6, column=0)
-bouton_sauvegarder_config.grid(row=7 , column=0)
-bouton_charger_config.grid(row=8 , column = 0)
-bouton_addition_config.grid(row=9 , column =0)
-bouton_soustraction_config.grid(row=10 , column=0)
+bouton_sauvegarder_config.grid(row=7, column=0)
+bouton_charger_config.grid(row=8, column=0)
+bouton_addition_config.grid(row=9, column=0)
+bouton_soustraction_config.grid(row=10, column=0)
 
 
 # Evenements widgets
