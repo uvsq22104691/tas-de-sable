@@ -7,9 +7,11 @@
 
 
 # Import
+import tkinter.filedialog as tk_filedialog
 import tkinter as tk
 import copy
 import numpy as np
+import os
 from random import randint
 
 
@@ -19,46 +21,56 @@ from random import randint
 W = 600
 # Hauteur du canvas
 H = 600
-# Dictionnaire de couleur
-COULEUR = {
-    "noir": "000000",
-    "rouge": "#FF0000",
-    "vert": "#00FF00",
-    "bleu": "#0000FF",
-    "cyan": "#FFFF00",
-    "jaune": "#00FFFF",
-    "magenta": "#FF00FF",
-    "blanc": "#FFFFFF",
-}
+# liste de couleurs
+COULEUR = [
+    "#000000",  # 0 - blanc
+    "#FF0000",  # 1 - rouge
+    "#00FF00",  # 2 - vert
+    "#0000FF",  # 3 - bleu
+    "#FFFF00",  # 4 - cyan
+    "#00FFFF",  # 5 - jaune
+    "#FF00FF",  # 6 - magenta
+    "#FFFFFF"   # 7 - noir
+]
 
 # Variable globale
 grille = [[randint(0, 6) for _ in range(3)] for _ in range(3)]
 
 grille = [
-    [1, 0, 4],
-    [0, 1, 4],
-    [0, 1, 2]
+    [1, 1, 1],
+    [2, 2, 2],
+    [3, 3, 3]
 ]
 
 
 # Fonction
+def init():
+    pass
+
+
 def avalanche():
-    ''' avalanche() est une fonction qui transmet en parallèle
-        1 grain de sable à chaque voisin de la grille en croix
+    '''
+        Transmet en parallèle 1 grain de sable à
+        chaque voisin adjacent de la grille
         pour chaque case ayant au moins 4 grains.
-        Elle renvoie le nombre de grain de la case ayant le plus
-        de grain dans la grille
+        Ne prend pas de paramètre
+        Rrenvoie le nombre de grain de la case ayant le plus
+        de grain dans la grille.
     '''
     global grille
     n = len(grille)
     grilletmp = copy.deepcopy(grille)
     grain_max = 0
+    voisins = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
     for i in range(len(grille)):
         for j in range(len(grille[0])):
             if grille[i][j] >= 4:
+                # soustraction des grains à la case traitée
                 grilletmp[i][j] = grilletmp[i][j] - 4
-                for p, q in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+
+                # addition de 1 grain par voisin
+                for p, q in voisins:
                     if 0 <= i + p < n and 0 <= j + q < n:
                         grilletmp[i + p][j + q] += 1
 
@@ -68,23 +80,105 @@ def avalanche():
 
 
 def dessine_grille():
+    '''
+        Dessine la grille sur le canvas avec des couleurs
+        en fonction du nombre de grains par case.
+        Ne prend pas de paramètre.
+        Ne renvoie rien.
+    '''
     pass
 
 
-def charger_grille():
-    pass
+def charger_config():
+    ''' Charge une grille à partir d'un fichier .tds spécifié par l'utilisateur
+        Ne prend pas de paramètre.
+        Renvoie la grille charger si succès sinon None.
+    '''
+    f = tk_filedialog.askopenfile(
+        initialdir=os.getcwd()+"/config/",
+        title="charger une config",
+        filetypes=(("fichier - tas de sable", "*.tds"),)
+    )
+    if f is None:
+        return None
+
+    grille2 = eval(f.readline())
+
+    return grille2
 
 
-def sauvegarder_grille():
-    pass
+def sauvegarder_config():
+    '''
+        Sauvegarde la grille actuelle dans un fichier .tds
+        spécifié par l'utilisateur.
+        Ne prend pas de paramètre.
+        Ne renvoie rien.
+    '''
+    fichier = tk_filedialog.asksaveasfilename(
+        initialdir=os.getcwd()+"/config/",
+        title="Sauvergarder une config",
+        defaultextension=(".tds"),
+        filetypes=(("fichier - tas de sable", "*.tds"),)
+    )
+
+    if not fichier:
+        return
+
+    chemin = fichier.split('.')
+    if len(chemin) != 2:
+        return
+
+    chemin, ext = chemin[:]
+    if ext != 'tds':
+        return
+
+    with open(fichier, "w") as f:
+        f.write(str(grille))
+        f.close()
 
 
 def addition_config():
-    pass
+    '''
+        Modifie la grille actuelle avec une autre grille à
+        partir d'un fichier .tds spécifié par l'utilisateur.
+        Les cases des grilles sont additionné deux à deux.
+        Ne prend pas de paramètre.
+        Ne renvoie rien.
+    '''
+    global grille
+    grille2 = charger_config()
+
+    n = len(grille)
+    n2 = len(grille2)
+    if n != n2:
+        return
+
+    for i in range(n):
+        for j in range(n):
+            grille[i][j] += grille2[i][j]
 
 
 def soustration_config():
-    pass
+    '''
+        Modifie la grille actuelle avec une autre grille à
+        partir d'un fichier .tds spécifié par l'utilisateur.
+        Les cases de la grille spécifiée sont soutraite à celle de la grille.
+        Ne prend pas de paramètre.
+        Ne renvoie rien.
+    '''
+    global grille
+    grille2 = charger_config()
+
+    n = len(grille)
+    n2 = len(grille2)
+    if n != n2:
+        return
+
+    for i in range(n):
+        for j in range(n):
+            grille[i][j] -= grille2[i][j]
+            if grille[i][j] < 0:
+                grille[i][j] = 0
 
 
 # Création widgets
@@ -113,4 +207,5 @@ while 1:
     print(*grille, sep="\n", end="\n\n")
     if grain_max < 4:
         break
+
 root.mainloop()
