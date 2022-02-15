@@ -26,7 +26,7 @@ W = 600
 H = 600
 
 # Largeur de la grille
-N = 10
+N = 21
 
 # liste de couleurs
 COULEUR = [
@@ -52,24 +52,14 @@ def init():
     global grille
     grille = [[randint(0, 10) for _ in range(N)] for _ in range(N)]
 
-    if not os.path.exists(f"{os.getcwd()}/aleatoire"):
-        pass
-    if not os.path.exists(f"{os.getcwd()}/pile_centree"):
-        pass
-    if not os.path.exists(f"{os.getcwd()}/max_stable"):
-        pass
-    if not os.path.exists(f"{os.getcwd()}/identity"):
-        pass
 
-
-def avalanche():
+def avalanche(grille):
     ''' Transmet en parallèle 1 grain de sable à
         chaque voisin adjacent de la grille
         pour chaque case ayant au moins 4 grains.
         Rrenvoie le nombre de grain de la case ayant le plus
         de grain dans la grille (int).
     '''
-    global grille
     grilletmp = copy.deepcopy(grille)
     voisins = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
@@ -81,8 +71,10 @@ def avalanche():
 
                 # addition de 1 grain par voisin
                 for p, q in voisins:
-                    if 0 <= i + p < N and 0 <= j + q < N:
+                    try:
                         grilletmp[i + p][j + q] += 1
+                    except IndexError:
+                        pass
 
     grille = copy.deepcopy(grilletmp)
     grain_max = 0
@@ -90,8 +82,14 @@ def avalanche():
         if grain_max < max(i):
             grain_max = max(i)
 
-    dessine_grille()
-    return grain_max
+    return (grille, grain_max)
+
+
+def stabilise(grille):
+    while 1:
+        grille, grain_max = avalanche(grille)
+        if grain_max < 4:
+            break
 
 
 def dessine_grille():
@@ -102,46 +100,103 @@ def dessine_grille():
     for i in range(N):
         for j in range(N):
             canvas.create_rectangle(
-                (W/N) * i,
-                (H/N) * j,
-                (W/N) + (W/N) * i,
-                (H/N) + (H/N) * j,
+                (W/N) * j,
+                (H/N) * i,
+                (W/N) + (W/N) * j,
+                (H/N) + (H/N) * i,
                 fill=COULEUR[grille[i][j] if grille[i][j] < 11 else 10],
                 width=0
             )
-            # canvas.create_text(
-            #     (W/N)/2 + (W/N) * i,
-            #     (H/N)/2 + (H/N) * j,
-            #     text=str(grille[i][j]),
-            #     width=50
-            # )
+            canvas.create_text(
+                (W/N)/2 + (W/N) * j,
+                (H/N)/2 + (H/N) * i,
+                text=str(grille[i][j]),
+                width=50,
+                fill="black" if grille[i][j] < 10 else "white"
+            )
     canvas.update()
 
 
-def charger_config(action=None):
+def fenetre_charger_config():
     ''' Charge une grille à partir d'un fichier .tds spécifié par l'utilisateur
         Renvoie la grille (list[list]) charger si succès sinon None.
     '''
 
-    # On charge une config précise
-    if action is not None:
-        f = f"{action}.tds"
-        with open(f, "r") as file:
-            grille2 = eval(file.readline())
-            file.close()
-        return grille2
+    # On crée une nouvelle fenetre pour choisir la config à charger
 
-    # On charge une config en utilisant un explorateur de fichier
-    f = tk_filedialog.askopenfile(
-        initialdir=os.getcwd()+"/config/",
-        title="charger une config",
-        filetypes=(("fichier - tas de sable", "*.tds"),)
+    fen_option = tk.Tk()
+    fen_option.title = "Fenêtre d'option"
+
+    bouton_aléatoire = tk.Button(
+        fen_option,
+        text="Config aléatoire",
+        command=lambda: charger_config("aleatoire")
     )
 
-    if f is None:
-        return None
+    bouton_pile_centre = tk.Button(
+        fen_option,
+        text="Config pile centrée",
+        command=lambda: charger_config("pile_centree")
+    )
 
-    return eval(f.readline())
+    bouton_max_stable = tk.Button(
+        fen_option,
+        text="Config max stable",
+        command=lambda: charger_config("max_stable")
+    )
+
+    bouton_max_stable = tk.Button(
+        fen_option,
+        text="Config max stable",
+        command=lambda: charger_config("double_max_stable")
+    )
+
+    bouton_config_identity = tk.Button(
+        fen_option,
+        text="Config indentity",
+        command=lambda: charger_config("identity")
+    )
+
+    bouton_aléatoire.grid(row=0, column=0)
+    bouton_pile_centre.grid(row=1, column=0)
+    bouton_max_stable.grid(row=2, column=0)
+    bouton_config_identity.grid(row=3, column=0)
+
+    fen_option.mainloop()
+
+
+def charger_config(conf=None):
+    if conf is None:
+        f = tk_filedialog.askopenfile(
+            initialdir=os.getcwd()+"/config/",
+            title="charger une config",
+            filetypes=(("fichier - tas de sable", "*.tds"),)
+        )
+
+        if f is None:
+            return None
+        return eval(f.readline())
+
+    if conf == "aleatoire":
+        return [[randint(0, 10) for _ in range(N)] for _ in range(N)]
+
+    elif conf == "pile_centree":
+        grilletmp = [[0] * N for _ in range(N)]
+        nb_grains = 10
+        grilletmp[N//2][N//2] = nb_grains
+        return grilletmp
+
+    elif conf == "max_stable":
+        return [[3] * N for _ in range(N)]
+
+    elif conf == "double_max_stable":
+        return [[6] * N for _ in range(N)]
+
+    elif conf == "identity":
+        g1 = charger_config("double_max_stable")
+        g1 = stabilise(g1)
+
+        return soustration_config(g1, )
 
 
 def sauvegarder_config():
@@ -171,35 +226,51 @@ def sauvegarder_config():
         f.close()
 
 
-def addition_config():
+def addition_config(g1=None, g2=None):
     ''' Modifie la grille actuelle avec une autre grille à
         partir d'un fichier .tds spécifié par l'utilisateur.
         Les cases des grilles sont additionné deux à deux.
     '''
+    if g1 is not None and g2 is not None:  # addition des deux grilles
+        for i in range(N):
+            for j in range(N):
+                g1[i][j] += g2[i][j]
+
+        return g1
+
     global grille
     grille2 = charger_config()
 
-    n = len(grille)
-    n2 = len(grille2)
-    if n != n2:
+    n = len(grille2)
+    if n != N:
         return
 
     for i in range(n):
         for j in range(n):
             grille[i][j] += grille2[i][j]
+    
+    dessine_grille()
 
 
-def soustration_config():
+def soustration_config(g1=None, g2=None):
     ''' Modifie la grille actuelle avec une autre grille à
         partir d'un fichier .tds spécifié par l'utilisateur.
         Les cases de la grille spécifiée sont soutraite à celle de la grille.
     '''
+    if g1 is not None and g2 is not None:  # addition des deux grilles
+        for i in range(N):
+            for j in range(N):
+                g1[i][j] -= g2[i][j]
+                if g1[i][j] < 0:
+                    g1[i][j] = 0
+
+        return g1
+
     global grille
     grille2 = charger_config()
 
-    n = len(grille)
-    n2 = len(grille2)
-    if n != n2:
+    n = len(grille2)
+    if n != N:
         return
 
     for i in range(n):
@@ -229,30 +300,7 @@ root.title("Projet - tas de sable")
 canvas = tk.Canvas(root, width=W, height=H, bg="blue")
 bouton_cinema = tk.Button(root, text="cinéma", command=change_affichage)
 bouton_pause = tk.Button(root, text="pause", command=change_pause)
-
-bouton_aléatoire = tk.Button(
-    root,
-    text="Config aléatoire",
-    command=lambda: charger_config("aleatoire")
-)
-
-bouton_pile_centre = tk.Button(
-    root,
-    text="Config pile centrée",
-    command=lambda: charger_config("pile_centree")
-)
-
-bouton_max_stable = tk.Button(
-    root,
-    text="Config max stable",
-    command=lambda: charger_config("max_stable")
-)
-
-bouton_config_identity = tk.Button(
-    root,
-    text="Config indentity",
-    command=lambda: charger_config("identity")
-)
+bouton_option = tk.Button(root, text="option")
 
 bouton_sauvegarder_config = tk.Button(
     root,
@@ -263,7 +311,7 @@ bouton_sauvegarder_config = tk.Button(
 bouton_charger_config = tk.Button(
     root,
     text="Charger config",
-    command=charger_config
+    command=fenetre_charger_config
 )
 
 bouton_addition_config = tk.Button(
@@ -280,17 +328,14 @@ bouton_soustraction_config = tk.Button(
 
 
 # Placement widgets
-canvas.grid(row=0, column=1, rowspan=10)
+canvas.grid(row=0, column=1, rowspan=7)
 bouton_cinema.grid(row=0, column=0)
 bouton_pause.grid(row=1, column=0)
-bouton_aléatoire.grid(row=2, column=0)
-bouton_pile_centre.grid(row=3, column=0)
-bouton_max_stable.grid(row=4, column=0)
-bouton_config_identity.grid(row=5, column=0)
-bouton_sauvegarder_config.grid(row=6, column=0)
-bouton_charger_config.grid(row=7, column=0)
-bouton_addition_config.grid(row=8, column=0)
-bouton_soustraction_config.grid(row=9, column=0)
+bouton_option.grid(row=2, column=0)
+bouton_sauvegarder_config.grid(row=3, column=0)
+bouton_charger_config.grid(row=4, column=0)
+bouton_addition_config.grid(row=5, column=0)
+bouton_soustraction_config.grid(row=6, column=0)
 
 
 # Evenements widgets
@@ -302,7 +347,9 @@ init()
 dessine_grille()
 
 while 1:
-    grain_max = avalanche()
+    root.after(500)
+    grille, grain_max = avalanche(grille)
+    dessine_grille()
     if grain_max < 4:
         break
 
