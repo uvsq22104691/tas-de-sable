@@ -9,7 +9,7 @@
 
 
 # Import
-import tkinter.filedialog as tk_filedialog
+import tkinter.filedialog as fd
 import tkinter as tk
 import copy
 import os
@@ -17,8 +17,6 @@ from random import randint
 
 
 # Constante
-
-
 # Largeur du canvas
 W = 600
 
@@ -26,7 +24,7 @@ W = 600
 H = 600
 
 # Largeur de la grille
-N = 21
+N = 20
 
 # liste de couleurs
 COULEUR = [
@@ -43,6 +41,10 @@ COULEUR = [
     "#000000"   # 10 - noir
 ]
 
+# Variable globale
+G_grille = []
+G_pause = True
+
 
 # Fonction
 def init():
@@ -50,7 +52,7 @@ def init():
         Vérification et création si besoin des grilles par défaut.
     '''
     global grille
-    grille = [[randint(0, 10) for _ in range(N)] for _ in range(N)]
+    grille = [[randint(0, 8) for _ in range(N)] for _ in range(N)]
 
 
 def avalanche(grille):
@@ -86,16 +88,25 @@ def avalanche(grille):
 
 
 def stabilise(grille):
+    if grille is None:
+        global G_grille
+        grille = G_grille
+
     while 1:
         grille, grain_max = avalanche(grille)
+        if grille is G_grille:
+            dessine_grille()
+
         if grain_max < 4:
             break
+    return grille
 
 
 def dessine_grille():
     ''' Dessine la grille sur le canvas avec des couleurs
         en fonction du nombre de grains par case.
     '''
+    global G_grille
     canvas.delete('all')
     for i in range(N):
         for j in range(N):
@@ -104,15 +115,15 @@ def dessine_grille():
                 (H/N) * i,
                 (W/N) + (W/N) * j,
                 (H/N) + (H/N) * i,
-                fill=COULEUR[grille[i][j] if grille[i][j] < 11 else 10],
+                fill=COULEUR[G_grille[i][j] if G_grille[i][j] < 11 else 10],
                 width=0
             )
             canvas.create_text(
                 (W/N)/2 + (W/N) * j,
                 (H/N)/2 + (H/N) * i,
-                text=str(grille[i][j]),
+                text=str(G_grille[i][j]),
                 width=50,
-                fill="black" if grille[i][j] < 10 else "white"
+                fill="black" if G_grille[i][j] < 10 else "white"
             )
     canvas.update()
 
@@ -157,17 +168,24 @@ def fenetre_charger_config():
         command=lambda: charger_config("identity")
     )
 
+    bouton_charge_config = tk.Button(
+        fen_option,
+        text="Config indentity",
+        command=lambda: charger_config("identity")
+    )
+
     bouton_aléatoire.grid(row=0, column=0)
     bouton_pile_centre.grid(row=1, column=0)
     bouton_max_stable.grid(row=2, column=0)
     bouton_config_identity.grid(row=3, column=0)
+    bouton_charge_config.grid(row=5, column=0)
 
     fen_option.mainloop()
 
 
 def charger_config(conf=None):
     if conf is None:
-        f = tk_filedialog.askopenfile(
+        f = fd.askopenfile(
             initialdir=os.getcwd()+"/config/",
             title="charger une config",
             filetypes=(("fichier - tas de sable", "*.tds"),)
@@ -196,14 +214,14 @@ def charger_config(conf=None):
         g1 = charger_config("double_max_stable")
         g1 = stabilise(g1)
 
-        return soustration_config(g1, )
+        # return soustration_config(g1, )
 
 
 def sauvegarder_config():
     ''' Sauvegarde la grille actuelle dans un fichier .tds
         spécifié par l'utilisateur.
     '''
-    fichier = tk_filedialog.asksaveasfilename(
+    fichier = fd.asksaveasfilename(
         initialdir=os.getcwd()+"/config/",
         title="Sauvergarder une config",
         defaultextension=(".tds"),
@@ -222,7 +240,7 @@ def sauvegarder_config():
         return
 
     with open(fichier, "w") as f:
-        f.write(str(grille))
+        f.write(str(grille).replace(' ', ''))
         f.close()
 
 
@@ -248,7 +266,7 @@ def addition_config(g1=None, g2=None):
     for i in range(n):
         for j in range(n):
             grille[i][j] += grille2[i][j]
-    
+
     dessine_grille()
 
 
@@ -282,7 +300,7 @@ def soustration_config(g1=None, g2=None):
 
 def change_pause():
     ''' Met en pause ou reprend les avalanches.'''
-    pass
+    # bouton_pause["text"]
 
 
 def change_affichage():
@@ -344,10 +362,11 @@ bouton_soustraction_config.grid(row=6, column=0)
 # Boucle principale
 init()
 
+grille = charger_config()
 dessine_grille()
 
+
 while 1:
-    root.after(500)
     grille, grain_max = avalanche(grille)
     dessine_grille()
     if grain_max < 4:
