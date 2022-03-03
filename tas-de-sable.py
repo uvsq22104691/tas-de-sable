@@ -36,12 +36,6 @@ COULEUR = [
 # Variable globale
 grille = [[randint(0, 6) for _ in range(3)] for _ in range(3)]
 
-grille = [
-    [1, 1, 1],
-    [2, 2, 2],
-    [3, 3, 3]
-]
-
 
 # Fonction
 def init():
