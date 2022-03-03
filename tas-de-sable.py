@@ -84,12 +84,22 @@ def avalanche():
 
 
 def dessine_grille():
-    '''
-        Dessine la grille sur le canvas avec des couleurs
-        en fonction du nombre de grains par case.
-        Ne prend pas de paramètre.
-        Ne renvoie rien.
-    '''
+    show = []
+    for x in range(long):
+        columnShow = []
+        for y in range(long):
+            columnShow.append(canvas.create_rectangle(450/long*x,450/long*y,50+450/long*y,fill=FindColor(x,y,grille),outline="black"))
+            show.append(columnShow)
+
+    for o in range(120):
+        bordureFill(grille,long,'#')
+        for x in range(long):
+            for y in range(long):
+                canvas.itemconfig(show[x][y], fill=Findcolor(x,y,grille))
+                canvas.grid()
+        bordureFill(grille,long,0)
+        sandMove(long)
+
     pass
 
 
