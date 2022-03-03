@@ -111,16 +111,16 @@ def dessine_grille():
     for i in range(N):
         for j in range(N):
             canvas.create_rectangle(
-                (W/N) * j,
-                (H/N) * i,
-                (W/N) + (W/N) * j,
-                (H/N) + (H/N) * i,
+                (W / N) * j,
+                (H / N) * i,
+                (W / N) + (W / N) * j,
+                (H / N) + (H / N) * i,
                 fill=COULEUR[G_grille[i][j] if G_grille[i][j] < 11 else 10],
                 width=0
             )
             canvas.create_text(
-                (W/N)/2 + (W/N) * j,
-                (H/N)/2 + (H/N) * i,
+                (W / N) / 2 + (W / N) * j,
+                (H / N) / 2 + (H / N) * i,
                 text=str(G_grille[i][j]),
                 width=50,
                 fill="black" if G_grille[i][j] < 10 else "white"
@@ -186,14 +186,17 @@ def fenetre_charger_config():
 def charger_config(conf=None):
     if conf is None:
         f = fd.askopenfile(
-            initialdir=os.getcwd()+"/config/",
+            initialdir=os.getcwd() + "/config/",
             title="charger une config",
             filetypes=(("fichier - tas de sable", "*.tds"),)
         )
 
         if f is None:
             return None
-        return eval(f.readline())
+        global N
+        g = eval(f.readline())
+        N = len(g)
+        return g
 
     if conf == "aleatoire":
         return [[randint(0, 10) for _ in range(N)] for _ in range(N)]
@@ -201,7 +204,7 @@ def charger_config(conf=None):
     elif conf == "pile_centree":
         grilletmp = [[0] * N for _ in range(N)]
         nb_grains = 10
-        grilletmp[N//2][N//2] = nb_grains
+        grilletmp[N // 2][N // 2] = nb_grains
         return grilletmp
 
     elif conf == "max_stable":
@@ -222,7 +225,7 @@ def sauvegarder_config():
         spécifié par l'utilisateur.
     '''
     fichier = fd.asksaveasfilename(
-        initialdir=os.getcwd()+"/config/",
+        initialdir=os.getcwd() + "/config/",
         title="Sauvergarder une config",
         defaultextension=(".tds"),
         filetypes=(("fichier - tas de sable", "*.tds"),)
@@ -362,12 +365,12 @@ bouton_soustraction_config.grid(row=6, column=0)
 # Boucle principale
 init()
 
-grille = charger_config()
+G_grille = charger_config()
 dessine_grille()
 
 
 while 1:
-    grille, grain_max = avalanche(grille)
+    G_grille, grain_max = avalanche(G_grille)
     dessine_grille()
     if grain_max < 4:
         break
