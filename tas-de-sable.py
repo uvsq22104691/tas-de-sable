@@ -13,7 +13,9 @@ import tkinter.filedialog as fd
 import tkinter as tk
 import marshal
 import os
-from random import randint
+from turtle import width
+from matplotlib import widgets
+import numpy as np
 
 
 # Constante
@@ -24,7 +26,9 @@ W = 600
 H = 600
 
 # Largeur de la grille
-N = 31
+N = 20
+
+voisins = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
 # liste de couleurs
 COULEUR = [
@@ -45,6 +49,9 @@ COULEUR = [
 G_grille = []
 G_pause = True
 G_auto = True
+G_clique_grain = 1
+G_aff_nombre = True
+G_tps_avalanche = 100
 
 
 # Fonction
@@ -53,7 +60,7 @@ def init():
         Vérification et création si besoin des grilles par défaut.
     '''
     global G_grille
-    G_grille = [[randint(0, 8) for _ in range(N)] for _ in range(N)]
+    G_grille = [list(map(int, np.random.randint(11, size=N))) for _ in range(N)]
     dessine_grille()
 
 
@@ -62,31 +69,21 @@ def avalanche(grille):
         chaque voisin adjacent de la grille
         pour chaque case ayant au moins 4 grains.
         Rrenvoie le nombre de grain de la case ayant le plus
-        de grain dans la grille (int).
-    '''
+        de grain dans la grille (int).'''
+
     grilletmp = marshal.loads(marshal.dumps(grille))
-    voisins = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-    for i in range(N):
-        for j in range(N):
-            if grille[i][j] >= 4:
-                # soustraction des grains à la case traitée
-                grilletmp[i][j] = grilletmp[i][j] - 4
+    for y in range(N):
+        for x in range(N):
+            if grille[y][x] >= 4:
+                grilletmp[y][x] -= 4
 
-                # addition de 1 grain par voisin
                 for p, q in voisins:
-                    try:
-                        if i + p == -1 or j + q == -1:
-                            continue
-                        grilletmp[i + p][j + q] += 1
-                    except IndexError:
-                        pass
+                    if y + p not in (-1, N) and x + q not in (-1, N):
+                        grilletmp[y + p][x + q] += 1
 
     grille = marshal.loads(marshal.dumps(grilletmp))
-    grain_max = 0
-    for i in grille:
-        if grain_max < max(i):
-            grain_max = max(i)
+    grain_max = np.max(grille)
 
     return (grille, grain_max)
 
@@ -107,7 +104,7 @@ def stabilise(grille=None, clicked=False):
         dessine_grille()
 
     if grain_max >= 4 and not G_pause and G_auto:
-        root.after(100, stabilise, grille)
+        root.after(G_tps_avalanche, stabilise, grille)
     if grain_max < 4:
         if not G_pause:
             change_pause()
@@ -119,89 +116,192 @@ def dessine_grille():
     ''' Dessine la grille sur le canvas avec des couleurs
         en fonction du nombre de grains par case.
     '''
-    global G_grille
+    global G_grille, G_aff_nombre
     canvas.delete('all')
-    for i in range(N):
-        for j in range(N):
+    for y in range(N):
+        for x in range(N):
             canvas.create_rectangle(
-                (W / N) * j,
-                (H / N) * i,
-                (W / N) + (W / N) * j,
-                (H / N) + (H / N) * i,
-                fill=COULEUR[G_grille[i][j] if G_grille[i][j] < 11 else 10],
+                (W / N) * x,
+                (H / N) * y,
+                (W / N) + (W / N) * x,
+                (H / N) + (H / N) * y,
+                fill=COULEUR[G_grille[y][x] if G_grille[y][x] < 11 else 10],
+                tags=((y, x)),
                 width=0
             )
-            # canvas.create_text(
-            #     (W / N) / 2 + (W / N) * j,
-            #     (H / N) / 2 + (H / N) * i,
-            #     text=str(G_grille[i][j]),
-            #     width=50,
-            #     fill="black" if G_grille[i][j] < 10 else "white"
-            # )
+            if G_aff_nombre:
+                canvas.create_text(
+                    (W / N) / 2 + (W / N) * x,
+                    (H / N) / 2 + (H / N) * y,
+                    text=str(G_grille[y][x]),
+                    tags=((y, x)),
+                    width=50,
+                    fill="black" if G_grille[y][x] < 10 else "white"
+                )
     canvas.update()
 
 
-def fenetre_charger_config():
+def dessine_case(y, x):
+    canvas.delete((y, x))
+    canvas.create_rectangle(
+        (W / N) * x,
+        (H / N) * y,
+        (W / N) + (W / N) * x,
+        (H / N) + (H / N) * y,
+        fill=COULEUR[G_grille[y][x] if G_grille[y][x] < 11 else 10],
+        tags=((y, x)),
+        width=0
+    )
+    if G_aff_nombre:
+        canvas.create_text(
+            (W / N) / 2 + (W / N) * x,
+            (H / N) / 2 + (H / N) * y,
+            text=str(G_grille[y][x]),
+            tags=((y, x)),
+            width=50,
+            fill="black" if G_grille[y][x] < 10 else "white"
+        )
+
+
+def del_fen(fen):
+    global fen_charge_conf, fen_change_opt
+    if "fen_charge_conf" in globals():
+        global entry_aleatoire_min, entry_aleatoire_max
+        fen_charge_conf.destroy()
+        del fen_charge_conf
+        del entry_aleatoire_min
+        del entry_aleatoire_max
+    else:
+        fen_change_opt.destroy()
+        del fen_change_opt
+
+
+def fenetre_config(action="replace", name="Fenêtre chargement config"):
     ''' Charge une grille à partir d'un fichier .tds spécifié par l'utilisateur
         Renvoie la grille (list[list]) charger si succès sinon None.
     '''
 
     # On crée une nouvelle fenetre pour choisir la config à charger
+    global fen_charge_conf
+    if "fen_charge_conf" in globals():
+        if name == fen_charge_conf.title():
+            fen_charge_conf.focus_force()
+            return
+        del_fen(fen_charge_conf)
 
     fen_charge_conf = tk.Tk()
-    fen_charge_conf.title("Fenêtre chargement config")
+    fen_charge_conf.protocol("WM_DELETE_WINDOW", lambda: del_fen(fen_charge_conf))
+    fen_charge_conf.title(name)
 
-    bouton_aléatoire = tk.Button(
-        fen_charge_conf,
+    style_button = {
+        "master": fen_charge_conf,
+        "height": 1,
+        "width": 15,
+        "font": ('Ebrima', 12)
+    }
+    style_label = {
+        "master": fen_charge_conf,
+        "font": ('Ebrima', 12)
+    }
+    style_entry = {
+        "master": fen_charge_conf,
+        "font": ('Ebrima', 12)
+    }
+
+    bouton_aleatoire = tk.Button(
+        **style_button,
         text="Aléatoire",
-        command=lambda: charger_config("aleatoire", True)
+        command=lambda: charger_config("aleatoire", action)
     )
+
+    global label_min
+    label_min = tk.Label(
+        **style_label,
+        text="min:"
+    )
+
+    global entry_aleatoire_min
+    entry_aleatoire_min = tk.Entry(
+        **style_entry
+    )
+    entry_aleatoire_min.insert(-1, "0")
+
+    global label_max
+    label_max = tk.Label(
+        **style_label,
+        text="max:"
+    )
+
+    global entry_aleatoire_max
+    entry_aleatoire_max = tk.Entry(
+        **style_entry
+    )
+    entry_aleatoire_max.insert(-1, "10")
 
     bouton_pile_centre = tk.Button(
-        fen_charge_conf,
+        **style_button,
         text="Pile centrée",
-        command=lambda: charger_config("pile_centree", True)
+        command=lambda: charger_config("pile_centree", action)
     )
 
+    global label_pile_centre
+    label_pile_centre = tk.Label(
+        **style_label,
+        text="grains:"
+    )
+
+    global entry_pile_centre
     entry_pile_centre = tk.Entry(
-        fen_charge_conf
+        **style_entry
     )
+    entry_pile_centre.insert(-1, "100")
 
     bouton_max_stable = tk.Button(
-        fen_charge_conf,
+        **style_button,
         text="Max stable",
-        command=lambda: charger_config("max_stable", True)
+        command=lambda: charger_config("max_stable", action)
     )
 
-    bouton_max_stable = tk.Button(
-        fen_charge_conf,
+    bouton_double_max_stable = tk.Button(
+        **style_button,
         text="Double max stable",
-        command=lambda: charger_config("double_max_stable", True)
+        command=lambda: charger_config("double_max_stable", action)
     )
 
     bouton_config_identity = tk.Button(
-        fen_charge_conf,
+        **style_button,
         text="Identity",
-        command=lambda: charger_config("identity", True)
+        command=lambda: charger_config("identity", action)
     )
 
     bouton_charge_config = tk.Button(
-        fen_charge_conf,
+        **style_button,
         text="Fichier",
-        command=lambda: charger_config(None, True)
+        command=lambda: charger_config(None, action)
     )
 
-    bouton_aléatoire.grid(row=0, column=0, pady=20)
-    bouton_pile_centre.grid(row=1, column=0, pady=20)
-    entry_pile_centre.grid(row=1, column=1, padx=35, pady=20)
-    bouton_max_stable.grid(row=2, column=0, padx=35, pady=20)
-    bouton_config_identity.grid(row=3, column=0, pady=20)
-    bouton_charge_config.grid(row=5, column=0, pady=20)
+    bouton_aleatoire.grid(row=0, column=0, pady=10)
+    label_min.grid(row=0, column=1, pady=(0, 4))
+    entry_aleatoire_min.grid(row=0, column=2, padx=(10, 35))
+    label_max.grid(row=0, column=3, pady=(0, 4))
+    entry_aleatoire_max.grid(row=0, column=4, padx=(10, 35))
+
+    bouton_pile_centre.grid(row=1, column=0, pady=10)
+    label_pile_centre.grid(row=1, column=1, pady=(0, 4))
+    entry_pile_centre.grid(row=1, column=2, padx=(10, 35), pady=10)
+
+    bouton_max_stable.grid(row=2, column=0, padx=35, pady=10)
+
+    bouton_double_max_stable.grid(row=3, column=0, padx=35, pady=10)
+
+    bouton_config_identity.grid(row=4, column=0, pady=10)
+
+    bouton_charge_config.grid(row=5, column=0, pady=10)
 
     fen_charge_conf.mainloop()
 
 
-def charger_config(conf=None, replace_G_grille=False):
+def charger_config(conf=None, action="replace"):
     if conf is None:
         f = fd.askopenfile(
             initialdir=os.getcwd() + "/config/",
@@ -217,11 +317,23 @@ def charger_config(conf=None, replace_G_grille=False):
         config = g
 
     elif conf == "aleatoire":
-        config = [[randint(0, 10) for _ in range(N)] for _ in range(N)]
+        global entry_aleatoire_min, entry_aleatoire_max
+        mini, maxi = 0, 11
+        if "entry_aleatoire_min" in globals():
+            if entry_aleatoire_min.get().isdecimal() and int(entry_aleatoire_min.get()) >= 0:
+                mini = int(entry_aleatoire_min.get())
+            if entry_aleatoire_max.get().isdecimal() and int(entry_aleatoire_max.get()) >= 0:
+                maxi = int(entry_aleatoire_max.get()) + 1
+            if maxi - 1 < mini:
+                mini, maxi = maxi - 1, mini + 1
+        config = [list(map(int, np.random.randint(mini, maxi, size=N))) for _ in range(N)]
 
     elif conf == "pile_centree":
+        global entry_pile_centre
         grilletmp = [[0] * N for _ in range(N)]
         nb_grains = 10
+        if entry_pile_centre.get().isdecimal():
+            nb_grains = int(entry_pile_centre.get())
         if N % 2 == 0:
             grilletmp[(N // 2) - 1][(N // 2) - 1] = nb_grains
             grilletmp[(N // 2) - 1][N // 2] = nb_grains
@@ -238,7 +350,7 @@ def charger_config(conf=None, replace_G_grille=False):
         config = [[6] * N for _ in range(N)]
 
     elif conf == "identity":
-        g1 = charger_config("double_max_stable")
+        g1 = charger_config("double_max_stable", "return")
 
         g2, grain_max = avalanche(g1)
         while grain_max >= 4:
@@ -249,13 +361,19 @@ def charger_config(conf=None, replace_G_grille=False):
         while grain_max >= 4:
             config, grain_max = avalanche(config)
 
-    if replace_G_grille:
+    if action == "replace":
         global G_grille
         G_grille = config
-        dessine_grille()
-        if not G_pause:
-            change_pause()
-    return config
+    elif action == "addition":
+        addition_config(config)
+    elif action == "soustraction":
+        soustration_config(config)
+    elif action == "return":
+        return config
+
+    dessine_grille()
+    if not G_pause:
+        change_pause()
 
 
 def sauvegarder_config():
@@ -285,58 +403,56 @@ def sauvegarder_config():
         f.close()
 
 
-def addition_config(g1=None, g2=None):
+def addition_config(g1, g2=None):
     ''' Modifie la grille actuelle avec une autre grille à
         partir d'un fichier .tds spécifié par l'utilisateur.
         Les cases des grilles sont additionné deux à deux.
     '''
     if g1 is not None and g2 is not None:  # addition des deux grilles
-        for i in range(N):
-            for j in range(N):
-                g1[i][j] += g2[i][j]
+        for y in range(N):
+            for x in range(N):
+                g1[y][x] += g2[y][x]
 
         return g1
 
     global G_grille
-    grille2 = charger_config()
 
-    n = len(grille2)
+    n = len(g1)
     if n != N:
         return
 
-    for i in range(n):
-        for j in range(n):
-            G_grille[i][j] += grille2[i][j]
+    for y in range(n):
+        for x in range(n):
+            G_grille[y][x] += g1[y][x]
 
     dessine_grille()
 
 
-def soustration_config(g1=None, g2=None):
+def soustration_config(g1, g2=None):
     ''' Modifie la grille actuelle avec une autre grille à
         partir d'un fichier .tds spécifié par l'utilisateur.
         Les cases de la grille spécifiée sont soutraite à celle de la grille.
     '''
     if g1 is not None and g2 is not None:  # addition des deux grilles
-        for i in range(N):
-            for j in range(N):
-                g1[i][j] -= g2[i][j]
-                if g1[i][j] < 0:
-                    g1[i][j] = 0
+        for y in range(N):
+            for x in range(N):
+                g1[y][x] -= g2[y][x]
+                if g1[y][x] < 0:
+                    g1[y][x] = 0
 
         return g1
 
     global G_grille
-    grille2 = charger_config()
 
-    n = len(grille2)
+    n = len(g1)
     if n != N:
         return
 
-    for i in range(n):
-        for j in range(n):
-            G_grille[i][j] -= grille2[i][j]
-            if G_grille[i][j] < 0:
-                G_grille[i][j] = 0
+    for y in range(n):
+        for x in range(n):
+            G_grille[y][x] -= g1[y][x]
+            if G_grille[y][x] < 0:
+                G_grille[y][x] = 0
     dessine_grille()
 
 
@@ -352,62 +468,137 @@ def change_pause():
 def change_affichage():
     ''' Change la façon dont les avalanches sont appelé.
         cinéma : auto avec x secondes d'intervalles.
-        clique : manuel une avalanche par clique.
+        Espace : manuel une avalanche par clique.
     '''
     global G_auto
-    bouton_cinema['text'] = "Cinéma" if bouton_cinema['text'] == "Clique" else "Clique"
+    bouton_cinema['text'] = "Cinéma" if bouton_cinema['text'] == "Espace" else "Espace"
     G_auto = not G_auto
     if not G_pause:
         change_pause()
 
 
-def change_options():
+def applique_ch_opt():
+    global fen_change_opt, v_aff_nombre, G_aff_nombre, entry_taille, entry_clique_grain, entry_tps_avalanche, N, G_clique_grain, G_tps_avalanche
+
+    G_aff_nombre = v_aff_nombre.get() == 1
+    try:
+        if int(entry_taille.get()) != N and int(entry_taille.get()) > 0:
+            N = int(entry_taille.get())
+            charger_config("aleatoire")
+
+        G_clique_grain = int(entry_clique_grain.get())
+
+        if int(entry_taille.get()) >= 0:
+            G_tps_avalanche = int(entry_tps_avalanche.get())
+    except ValueError:
+        pass
+
+    dessine_grille()
+
+
+def fenetre_options():
+    global fen_change_opt
+    if "fen_change_opt" in globals():
+        fen_change_opt.focus_force()
+        return
+
     fen_change_opt = tk.Tk()
+    fen_change_opt.protocol("WM_DELETE_WINDOW", lambda: del_fen(fen_change_opt))
     fen_change_opt.title("Fenêtre d'options")
 
-    bouton_aléatoire = tk.Button(
-        fen_change_opt,
-        text="Aléatoire",
-        command=lambda: charger_config("aleatoire", True)
+    global v_aff_nombre, entry_taille, entry_clique_grain, entry_tps_avalanche
+    v_aff_nombre = tk.IntVar(fen_change_opt)
+
+    style_label = {
+        "master": fen_change_opt,
+        "font": ('Ebrima', 12)
+    }
+
+    style_check = {
+        "master": fen_change_opt,
+        "width": 2
+    }
+
+    style_button = {
+        "master": fen_change_opt,
+        "font": ('Ebrima', 12)
+    }
+
+    style_entry = {
+        "master": fen_change_opt,
+        "width": 5,
+        "font": ('Ebrima', 12)
+    }
+
+    label_taille = tk.Label(
+        **style_label,
+        text="Taille de la grille (eniter > 0) :"
+    )
+    entry_taille = tk.Entry(
+        **style_entry
+    )
+    entry_taille.insert(-1, N)
+
+    label_clique_grain = tk.Label(
+        **style_label,
+        text="Grain à ajouter lors d'un clique (entier) :"
+    )
+    entry_clique_grain = tk.Entry(
+        **style_entry
+    )
+    entry_clique_grain.insert(-1, G_clique_grain)
+
+    label_tps_avalanche = tk.Label(
+        **style_label,
+        text="Temps entre chaque avalanche (en ms) :"
+    )
+    entry_tps_avalanche = tk.Entry(
+        **style_entry
+    )
+    entry_tps_avalanche.insert(-1, G_tps_avalanche)
+
+    label_aff_nombre = tk.Label(
+        **style_label,
+        text="Afficher le nombres de grains dans les cases :"
+    )
+    check_aff_nombre = tk.Checkbutton(
+        **style_check,
+        variable=v_aff_nombre
+    )
+    if G_aff_nombre:
+        check_aff_nombre.select()
+
+    button_applique = tk.Button(
+        **style_button,
+        text="Appliquer les changements",
+        command=applique_ch_opt
     )
 
-    bouton_pile_centre = tk.Button(
-        fen_change_opt,
-        text="Pile centrée",
-        command=lambda: charger_config("pile_centree", True)
-    )
+    label_taille.grid(row=0, column=0, padx=10, sticky="e")
+    entry_taille.grid(row=0, column=1, padx=(0, 10))
 
-    bouton_max_stable = tk.Button(
-        fen_change_opt,
-        text="Max stable",
-        command=lambda: charger_config("max_stable", True)
-    )
+    label_clique_grain.grid(row=1, column=0, padx=10, sticky="e")
+    entry_clique_grain.grid(row=1, column=1, padx=(0, 10))
 
-    bouton_max_stable = tk.Button(
-        fen_change_opt,
-        text="Double max stable",
-        command=lambda: charger_config("double_max_stable", True)
-    )
+    label_tps_avalanche.grid(row=2, column=0, padx=10, sticky="e")
+    entry_tps_avalanche.grid(row=2, column=1, padx=(0, 10))
 
-    bouton_config_identity = tk.Button(
-        fen_change_opt,
-        text="Identity",
-        command=lambda: charger_config("identity", True)
-    )
+    label_aff_nombre.grid(row=3, column=0, padx=10, sticky="e")
+    check_aff_nombre.grid(row=3, column=1, padx=(0, 10))
 
-    bouton_charge_config = tk.Button(
-        fen_change_opt,
-        text="Fichier",
-        command=lambda: charger_config(None, True)
-    )
-
-    bouton_aléatoire.grid(row=0, column=0, pady=20)
-    bouton_pile_centre.grid(row=1, column=0, pady=20)
-    bouton_max_stable.grid(row=2, column=0, padx=35, pady=20)
-    bouton_config_identity.grid(row=3, column=0, pady=20)
-    bouton_charge_config.grid(row=5, column=0, pady=20)
-
+    button_applique.grid(row=4, column=0, columnspan=2, pady=10)
     fen_change_opt.mainloop()
+
+
+def clique_grain(e):
+    y, x = int(e.y // (H / N)), int(e.x // (W / N))
+
+    if G_grille[y][x] + G_clique_grain >= 0:
+        G_grille[y][x] += G_clique_grain
+    else:
+        G_grille[y][x] = 0
+
+    dessine_case(y, x)
 
 
 # Création widgets
@@ -417,7 +608,7 @@ root.title("Projet - tas de sable")
 canvas = tk.Canvas(root, width=W, height=H, bg="white")
 bouton_cinema = tk.Button(root, text="Cinéma", command=change_affichage)
 bouton_pause = tk.Button(root, text="Reprendre", command=change_pause)
-bouton_option = tk.Button(root, text="Options", command=change_options)
+bouton_option = tk.Button(root, text="Options", command=fenetre_options)
 
 bouton_sauvegarder_config = tk.Button(
     root,
@@ -428,19 +619,19 @@ bouton_sauvegarder_config = tk.Button(
 bouton_charger_config = tk.Button(
     root,
     text="Charger config",
-    command=fenetre_charger_config
+    command=lambda: fenetre_config("replace")
 )
 
 bouton_addition_config = tk.Button(
     root,
     text="Addition config",
-    command=addition_config
+    command=lambda: fenetre_config("addition", "Fenêtre addition config")
 )
 
 bouton_soustraction_config = tk.Button(
     root,
     text="Soustraction_config",
-    command=soustration_config
+    command=lambda: fenetre_config("soustraction", "Fenêtre soustraction config")
 )
 
 
@@ -457,7 +648,7 @@ bouton_soustraction_config.grid(row=6, column=0, padx=20)
 
 # Evenements widgets
 root.bind('<space>', lambda e: stabilise(None, True))
-
+canvas.bind("<Button-1>", clique_grain)
 # Boucle principale
 init()
 root.mainloop()
