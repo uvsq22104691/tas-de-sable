@@ -13,8 +13,6 @@ import tkinter.filedialog as fd
 import tkinter as tk
 import marshal
 import os
-from turtle import width
-from matplotlib import widgets
 import numpy as np
 
 
@@ -28,7 +26,6 @@ H = 600
 # Largeur de la grille
 N = 20
 
-voisins = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
 # liste de couleurs
 COULEUR = [
@@ -49,9 +46,11 @@ COULEUR = [
 G_grille = []
 G_pause = True
 G_auto = True
-G_clique_grain = 1
+G_clique_grain = 0
 G_aff_nombre = True
 G_tps_avalanche = 100
+G_voisins = 4
+G_voisins_l = ((1, 0), (0, 1), (0, -1), (-1, 0))
 
 
 # Fonction
@@ -75,10 +74,10 @@ def avalanche(grille):
 
     for y in range(N):
         for x in range(N):
-            if grille[y][x] >= 4:
-                grilletmp[y][x] -= 4
+            if grille[y][x] >= G_voisins:
+                grilletmp[y][x] -= G_voisins
 
-                for p, q in voisins:
+                for p, q in G_voisins_l:
                     if y + p not in (-1, N) and x + q not in (-1, N):
                         grilletmp[y + p][x + q] += 1
 
@@ -103,9 +102,9 @@ def stabilise(grille=None, clicked=False):
         G_grille = grille
         dessine_grille()
 
-    if grain_max >= 4 and not G_pause and G_auto:
+    if grain_max >= G_voisins and not G_pause and G_auto:
         root.after(G_tps_avalanche, stabilise, grille)
-    if grain_max < 4:
+    if grain_max < G_voisins:
         if not G_pause:
             change_pause()
 
@@ -205,7 +204,8 @@ def fenetre_config(action="replace", name="Fenêtre chargement config"):
     }
     style_entry = {
         "master": fen_charge_conf,
-        "font": ('Ebrima', 12)
+        "font": ('Ebrima', 12),
+        "width": 5
     }
 
     bouton_aleatoire = tk.Button(
@@ -344,21 +344,23 @@ def charger_config(conf=None, action="replace"):
         config = grilletmp
 
     elif conf == "max_stable":
-        config = [[3] * N for _ in range(N)]
+        g = G_voisins - 1
+        config = [[g] * N for _ in range(N)]
 
     elif conf == "double_max_stable":
-        config = [[6] * N for _ in range(N)]
+        g = (G_voisins - 1) * 2
+        config = [[g] * N for _ in range(N)]
 
     elif conf == "identity":
         g1 = charger_config("double_max_stable", "return")
 
         g2, grain_max = avalanche(g1)
-        while grain_max >= 4:
+        while grain_max >= G_voisins:
             g2, grain_max = avalanche(g2)
         config = soustration_config(g1, g2)
 
         config, grain_max = avalanche(config)
-        while grain_max >= 4:
+        while grain_max >= G_voisins:
             config, grain_max = avalanche(config)
 
     if action == "replace":
@@ -478,9 +480,10 @@ def change_affichage():
 
 
 def applique_ch_opt():
-    global fen_change_opt, v_aff_nombre, G_aff_nombre, entry_taille, entry_clique_grain, entry_tps_avalanche, N, G_clique_grain, G_tps_avalanche
+    global fen_change_opt, v_aff_nombre, v_nb_voisins, G_aff_nombre, entry_taille, entry_clique_grain, entry_tps_avalanche, N, G_clique_grain, G_tps_avalanche, G_voisins_l, G_voisins
 
     G_aff_nombre = v_aff_nombre.get() == 1
+    G_voisins = v_nb_voisins.get()
     try:
         if int(entry_taille.get()) != N and int(entry_taille.get()) > 0:
             N = int(entry_taille.get())
@@ -490,6 +493,12 @@ def applique_ch_opt():
 
         if int(entry_taille.get()) >= 0:
             G_tps_avalanche = int(entry_tps_avalanche.get())
+
+        if G_voisins == 8:
+            G_voisins_l = ((1, 1), (1, 0), (1, -1), (0, 1), (0, -1), (-1, 1), (-1, 0), (-1, -1))
+        else:
+            G_voisins_l = ((1, 0), (0, 1), (0, -1), (-1, 0))
+
     except ValueError:
         pass
 
@@ -506,8 +515,9 @@ def fenetre_options():
     fen_change_opt.protocol("WM_DELETE_WINDOW", lambda: del_fen(fen_change_opt))
     fen_change_opt.title("Fenêtre d'options")
 
-    global v_aff_nombre, entry_taille, entry_clique_grain, entry_tps_avalanche
+    global v_aff_nombre, entry_taille, entry_clique_grain, entry_tps_avalanche, v_nb_voisins
     v_aff_nombre = tk.IntVar(fen_change_opt)
+    v_nb_voisins = tk.IntVar(fen_change_opt)
 
     style_label = {
         "master": fen_change_opt,
@@ -528,6 +538,13 @@ def fenetre_options():
         "master": fen_change_opt,
         "width": 5,
         "font": ('Ebrima', 12)
+    }
+
+    style_radio = {
+        "master": fen_change_opt,
+        "width": 8,
+        "font": ('Ebrima', 12),
+        "variable": v_nb_voisins
     }
 
     label_taille = tk.Label(
@@ -568,25 +585,43 @@ def fenetre_options():
     if G_aff_nombre:
         check_aff_nombre.select()
 
+    radio_4_voisins = tk.Radiobutton(
+        **style_radio,
+        text="4 voisins",
+        value=4
+    )
+    radio_8_voisins = tk.Radiobutton(
+        **style_radio,
+        text="8 voisins",
+        value=8
+    )
+    if G_voisins == 4:
+        radio_4_voisins.select()
+    else:
+        radio_8_voisins.select()
+
     button_applique = tk.Button(
         **style_button,
         text="Appliquer les changements",
         command=applique_ch_opt
     )
 
-    label_taille.grid(row=0, column=0, padx=10, sticky="e")
-    entry_taille.grid(row=0, column=1, padx=(0, 10))
+    label_taille.grid(row=0, column=0, columnspan=2, padx=10, sticky="e")
+    entry_taille.grid(row=0, column=2, padx=(0, 10))
 
-    label_clique_grain.grid(row=1, column=0, padx=10, sticky="e")
-    entry_clique_grain.grid(row=1, column=1, padx=(0, 10))
+    label_clique_grain.grid(row=1, column=0, columnspan=2, padx=10, sticky="e")
+    entry_clique_grain.grid(row=1, column=2, padx=(0, 10))
 
-    label_tps_avalanche.grid(row=2, column=0, padx=10, sticky="e")
-    entry_tps_avalanche.grid(row=2, column=1, padx=(0, 10))
+    label_tps_avalanche.grid(row=2, column=0, columnspan=2, padx=10, sticky="e")
+    entry_tps_avalanche.grid(row=2, column=2, padx=(0, 10))
 
-    label_aff_nombre.grid(row=3, column=0, padx=10, sticky="e")
-    check_aff_nombre.grid(row=3, column=1, padx=(0, 10))
+    label_aff_nombre.grid(row=3, column=0, columnspan=2, padx=10, sticky="e")
+    check_aff_nombre.grid(row=3, column=2, padx=(0, 10))
 
-    button_applique.grid(row=4, column=0, columnspan=2, pady=10)
+    radio_4_voisins.grid(row=4, column=0)
+    radio_8_voisins.grid(row=4, column=1)
+
+    button_applique.grid(row=5, column=0, columnspan=3, pady=10)
     fen_change_opt.mainloop()
 
 
