@@ -125,7 +125,6 @@ def dessine_grille():
                 (W / N) + (W / N) * x,
                 (H / N) + (H / N) * y,
                 fill=COULEUR[G_grille[y][x] if G_grille[y][x] < 11 else 10],
-                tags=((y, x)),
                 width=0
             )
             if G_aff_nombre:
@@ -133,7 +132,6 @@ def dessine_grille():
                     (W / N) / 2 + (W / N) * x,
                     (H / N) / 2 + (H / N) * y,
                     text=str(G_grille[y][x]),
-                    tags=((y, x)),
                     width=50,
                     fill="black" if G_grille[y][x] < 10 else "white"
                 )
@@ -148,7 +146,6 @@ def dessine_case(y, x):
         (W / N) + (W / N) * x,
         (H / N) + (H / N) * y,
         fill=COULEUR[G_grille[y][x] if G_grille[y][x] < 11 else 10],
-        tags=((y, x)),
         width=0
     )
     if G_aff_nombre:
@@ -156,7 +153,6 @@ def dessine_case(y, x):
             (W / N) / 2 + (W / N) * x,
             (H / N) / 2 + (H / N) * y,
             text=str(G_grille[y][x]),
-            tags=((y, x)),
             width=50,
             fill="black" if G_grille[y][x] < 10 else "white"
         )
@@ -164,13 +160,13 @@ def dessine_case(y, x):
 
 def del_fen(fen):
     global fen_charge_conf, fen_change_opt
-    if "fen_charge_conf" in globals():
+    if "fen_charge_conf" in globals() and fen == fen_charge_conf:
         global entry_aleatoire_min, entry_aleatoire_max
         fen_charge_conf.destroy()
         del fen_charge_conf
         del entry_aleatoire_min
         del entry_aleatoire_max
-    else:
+    elif "fen_change_opt" in globals() and fen == fen_change_opt:
         fen_change_opt.destroy()
         del fen_change_opt
 
@@ -191,6 +187,8 @@ def fenetre_config(action="replace", name="Fenêtre chargement config"):
     fen_charge_conf = tk.Tk()
     fen_charge_conf.protocol("WM_DELETE_WINDOW", lambda: del_fen(fen_charge_conf))
     fen_charge_conf.title(name)
+    fen_charge_conf.resizable(0, 0)
+    fen_charge_conf.geometry('+1200+460')
 
     style_button = {
         "master": fen_charge_conf,
@@ -488,6 +486,9 @@ def applique_ch_opt():
         if int(entry_taille.get()) != N and int(entry_taille.get()) > 0:
             N = int(entry_taille.get())
             charger_config("aleatoire")
+        else:
+            entry_taille.delete(0, tk.END)
+            entry_taille.insert(-1, N)
 
         G_clique_grain = int(entry_clique_grain.get())
 
@@ -512,8 +513,10 @@ def fenetre_options():
         return
 
     fen_change_opt = tk.Tk()
+    fen_change_opt.resizable(0, 0)
     fen_change_opt.protocol("WM_DELETE_WINDOW", lambda: del_fen(fen_change_opt))
     fen_change_opt.title("Fenêtre d'options")
+    fen_change_opt.geometry('+1200+200')
 
     global v_aff_nombre, entry_taille, entry_clique_grain, entry_tps_avalanche, v_nb_voisins
     v_aff_nombre = tk.IntVar(fen_change_opt)
@@ -639,6 +642,8 @@ def clique_grain(e):
 # Création widgets
 root = tk.Tk()
 root.title("Projet - tas de sable")
+root.resizable(0, 0)
+root.geometry('+400+200')
 
 canvas = tk.Canvas(root, width=W, height=H, bg="white")
 bouton_cinema = tk.Button(root, text="Cinéma", command=change_affichage)
@@ -665,7 +670,7 @@ bouton_addition_config = tk.Button(
 
 bouton_soustraction_config = tk.Button(
     root,
-    text="Soustraction_config",
+    text="Soustraction config",
     command=lambda: fenetre_config("soustraction", "Fenêtre soustraction config")
 )
 
