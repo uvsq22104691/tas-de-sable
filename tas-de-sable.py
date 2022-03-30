@@ -13,7 +13,7 @@ import tkinter.filedialog as fd
 import tkinter as tk
 import marshal
 import os
-import numpy as np
+from random import randint
 
 
 # Constante
@@ -59,31 +59,46 @@ def init():
         Vérification et création si besoin des grilles par défaut.
     '''
     global G_grille
-    G_grille = [list(map(int, np.random.randint(11, size=N))) for _ in range(N)]
+    G_grille = [[randint(0, 10) for _ in range(N)] for _ in range(N)]
     dessine_grille()
 
 
-def avalanche(grille):
+def avalanche(grille, parra=True):
     ''' Transmet en parallèle 1 grain de sable à
         chaque voisin adjacent de la grille
         pour chaque case ayant au moins 4 grains.
         Rrenvoie le nombre de grain de la case ayant le plus
         de grain dans la grille (int).'''
 
-    grilletmp = marshal.loads(marshal.dumps(grille))
+    if parra:
+        grilletmp = marshal.loads(marshal.dumps(grille))
 
-    for y in range(N):
-        for x in range(N):
-            if grille[y][x] >= G_voisins:
-                grilletmp[y][x] -= G_voisins
+        for y in range(N):
+            for x in range(N):
+                if grille[y][x] >= G_voisins:
+                    grilletmp[y][x] -= G_voisins
 
-                for p, q in G_voisins_l:
-                    if y + p not in (-1, N) and x + q not in (-1, N):
-                        grilletmp[y + p][x + q] += 1
+                    for p, q in G_voisins_l:
+                        if y + p not in (-1, N) and x + q not in (-1, N):
+                            grilletmp[y + p][x + q] += 1
 
-    grille = marshal.loads(marshal.dumps(grilletmp))
-    grain_max = np.max(grille)
+        grille = marshal.loads(marshal.dumps(grilletmp))
+        grain_max = max(*[case for line in grille for case in line])
+    else:
+        grain_max = max(*[case for line in grille for case in line])
+        while grain_max >= G_voisins:
+            for y in range(N):
+                for x in range(N):
+                    if grille[y][x] >= G_voisins:
+                        res = grille[y][x] % G_voisins
+                        quo = grille[y][x] // G_voisins
+                        grille[y][x] = res
 
+                        for p, q in G_voisins_l:
+                            if y + p not in (-1, N) and x + q not in (-1, N):
+                                grille[y + p][x + q] += quo
+
+            grain_max = max(*[case for line in grille for case in line])
     return (grille, grain_max)
 
 
@@ -324,7 +339,7 @@ def charger_config(conf=None, action="replace"):
                 maxi = int(entry_aleatoire_max.get()) + 1
             if maxi - 1 < mini:
                 mini, maxi = maxi - 1, mini + 1
-        config = [list(map(int, np.random.randint(mini, maxi, size=N))) for _ in range(N)]
+        config = [[randint(0, 10) for _ in range(N)] for _ in range(N)]
 
     elif conf == "pile_centree":
         global entry_pile_centre
@@ -351,15 +366,15 @@ def charger_config(conf=None, action="replace"):
 
     elif conf == "identity":
         g1 = charger_config("double_max_stable", "return")
-
-        g2, grain_max = avalanche(g1)
+        g2 = charger_config("double_max_stable", "return")
+        g2, grain_max = avalanche(g2, parra=False)
         while grain_max >= G_voisins:
-            g2, grain_max = avalanche(g2)
+            g2, grain_max = avalanche(g2, parra=False)
         config = soustration_config(g1, g2)
 
-        config, grain_max = avalanche(config)
+        config, grain_max = avalanche(config, parra=False)
         while grain_max >= G_voisins:
-            config, grain_max = avalanche(config)
+            config, grain_max = avalanche(config, parra=False)
 
     if action == "replace":
         global G_grille
